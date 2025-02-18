@@ -1,0 +1,13 @@
+{
+  "status": "success",
+  "message": "Verification code sent successfully",
+  "data": {
+    "verificationCode": "123456",
+    "timestamp": "2025-02-18T17:39:00Z",
+    "requestId": "abcd1234"
+  },
+  "error": {
+    "code": null,
+    "details": null
+  }
+}
