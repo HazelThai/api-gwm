@@ -10,9 +10,25 @@ const db = require("./config/db");
 const swaggerJsDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const config = require("./config/config");
-db();
 const app = express();
 const port = config.port;
+db();
+
+// app.use(corsMiddleware);
+app.use(
+  session({ secret: config.secretKey, resave: true, saveUninitialized: true })
+);
+app.use(
+  cors({
+    origin: config.corsOrigin,
+    credentials: true,
+  })
+);
+app.use(cookieParser());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+// app.use("/api", routes);
+app.use(express.static(path.join(__dirname, "public")));
 
 const swaggerOptions = {
   swaggerDefinition: {
@@ -30,6 +46,8 @@ const swaggerOptions = {
   },
   apis: ["./Controllers/*.js"],
 };
+const swaggerDocs = swaggerJsDoc(swaggerOptions);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 app.listen(port, () => {
   console.log(`Server chạy trên http://localhost:${port}`);
