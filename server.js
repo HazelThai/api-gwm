@@ -11,9 +11,9 @@ const swaggerJsDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const config = require("./config/config");
 const app = express();
-const port = config.port;
-db();
 
+db();
+const port = config.port
 // app.use(corsMiddleware);
 app.use(
   session({ secret: config.secretKey, resave: true, saveUninitialized: true })
