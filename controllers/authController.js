@@ -3,10 +3,15 @@ const createResponse = require("../utils/responseStructure");
 const generateUniqueCode = require("../utils/generateUniqueCode");
 /**
  * @swagger
- * /register:
+ * tags:
+ *  - name: Authentication
+ *    description: User authentication and registration
+ * /api/v1/register:
  *   post:
  *     summary: Register a new user
  *     description: Generates a unique verification code and sends it to the user's email.
+ *     tags:  
+ *       - Authentication
  *     requestBody:
  *       required: true
  *       content:
