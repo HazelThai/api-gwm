@@ -416,14 +416,6 @@ exports.register = async (req, res) => {
  *                      details:
  *                        type: string
  *                        example: SMTP server is unreachable
- * components:
- *    securitySchemes:
- *      bearerAuth:
- *        type: http
- *        scheme: bearer
- *        bearerFormat: JWT
- * security:
- *    - bearerAuth: []
  */
 exports.login = async (req, res) => {
   const { email, code } = req.body;
