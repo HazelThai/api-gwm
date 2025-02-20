@@ -430,10 +430,13 @@ exports.login = async (req, res) => {
     }
 
     sendVerificationCode(email, code, "login");
-    if (user.first_login) {
+    user.verifyCode = code;
+    await user.save();
+    if (code === user.verifyCode) {
+      user.verifyCode = null;
       user.first_login = false;
-      await user.save();
     }
+    await user.save();
     const accessToken = generateAccessToken(user);
     res.status(200).json(
       createResponse("success", "Verification code sent to your email", {
@@ -450,6 +453,65 @@ exports.login = async (req, res) => {
           "Failed to send email",
           { verificationCode: null },
           { code: "EMAIL_SEND_ERROR", details: error.message }
+        )
+      );
+  }
+};
+
+/**
+  * @swagger
+  * tags:
+  *   - name: Authentication
+  *     description: User authentication and registration
+  * /api/v1/logout:
+  *   post:
+  *     summary: Log out the user
+  *     description: Logs out the user by destroying the session and clearing the cookies
+  *     tags:
+  *       - Authentication
+  *     responses:
+  *       200:
+  *         description: User logged out successfully
+  *         schema:
+  *           type: object
+  *           properties:
+  *             status:
+  *               type: string
+  *               example: success
+  *             message:
+  *               type: string
+  *               example: User logged out successfully
+  *             data:
+  *               type: object
+  *               properties:
+  *                 verificationCode:
+  *                   type: string
+  *                   example: null
+  *                 accessToken:
+  *                   type: string
+  *                   example: null
+  *             error:
+*/
+exports.logout = async (req, res) => {
+  try {
+    req.session.destroy();
+    res.clearCookie("connect.sid");
+    res.clearCookie("accessToken");
+    res.status(200).json(
+      createResponse("success", "User logged out successfully", {
+        verificationCode: null,
+        accessToken: null,
+      })
+    );
+  } catch (error) {
+    return res
+      .status(500)
+      .json(
+        createResponse(
+          "error",
+          "Failed to log out",
+          { verificationCode: null, accessToken: null },
+          { code: "LOGOUT_ERROR", details: error.message }
         )
       );
   }
