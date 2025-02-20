@@ -6,11 +6,14 @@ const User = require("../models/User");
  * @swagger
  * tags:
  *   - name: Authentication
- *     description: User authentication and registration
- * /api/v1/register:
+ *     description: User authentication and email verification
+ * /api/v1/send-mail:
  *   post:
- *     summary: Register a new user
- *     description: Generates a unique verification code and sends it to the user's email.
+ *     summary: Send a verification code to the user's email
+ *     description: |
+ *       Generates a unique verification code and sends it to the user's email.
+ *       If the user does not exist, a new user account is created with the email and verification code.
+ *       If the user exists, the verification code is updated.
  *     tags:
  *       - Authentication
  *     requestBody:
@@ -24,6 +27,8 @@ const User = require("../models/User");
  *                 type: string
  *                 format: email
  *                 example: user@example.com
+ *             required:
+ *               - email
  *     responses:
  *       200:
  *         description: Verification code sent successfully
@@ -41,26 +46,20 @@ const User = require("../models/User");
  *                 data:
  *                   type: object
  *                   properties:
- *                      verificationCode:
- *                        type: string
- *                        example: ABC123
- *                      timestamp:
- *                        type: integer
- *                        example: 1676563200
- *                      requestId:
- *                        type: string
- *                        example: abc123xyz
+ *                     verificationCode:
+ *                       type: string
+ *                       example: ABC123
  *                 error:
  *                   type: object
  *                   properties:
- *                      code:
- *                        type: string
- *                        example: null
- *                      details:
- *                        type: string
- *                        example: null
+ *                     code:
+ *                       type: string
+ *                       example: null
+ *                     details:
+ *                       type: string
+ *                       example: null
  *       500:
- *         description: Failed to send verification code
+ *         description: Failed to send the verification code
  *         content:
  *           application/json:
  *             schema:
@@ -78,12 +77,6 @@ const User = require("../models/User");
  *                     verificationCode:
  *                       type: string
  *                       example: null
- *                     timestamp:
- *                       type: integer
- *                       example: 1676563200
- *                     requestId:
- *                       type: string
- *                       example: abc123xyz
  *                 error:
  *                   type: object
  *                   properties:
@@ -94,14 +87,28 @@ const User = require("../models/User");
  *                       type: string
  *                       example: SMTP server is unreachable
  */
-exports.register = async (req, res) => {
+exports.sendMail = async (req, res) => {
   const { email } = req.body;
   const code = generateUniqueCode();
 
   try {
     sendVerificationCode(email, code, "register");
+    const user = await User.findOne({ email });
+    if (!user) {
+      const userAccount = await User.create({
+        email: email,
+        name: "",
+        phone_number: "",
+        first_login: true,
+        account_verified: false,
+        verifyCode: code,
+      });
+      await userAccount.save();
+    }
+    user.verifyCode = code;
+    await user.save();
     res.status(200).json(
-      createResponse("success", "Verification code sent to your email", {
+      createResponse("success", "Verification code sent successfully", {
         verificationCode: code,
       })
     );
@@ -118,12 +125,186 @@ exports.register = async (req, res) => {
       );
   }
 };
+
+/**
+ * @swagger
+ * tags:
+ *   - name: Authentication
+ *     description: User authentication and registration
+ * /api/v1/register:
+ *   post:
+ *     summary: Register a new user
+ *     description: Verifies the user's email and updates their account information.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *               code:
+ *                 type: string
+ *                 example: ABC123
+ *               name:
+ *                 type: string
+ *                 example: John Doe
+ *               number_phone:
+ *                 type: string
+ *                 example: +1234567890
+ *     responses:
+ *       200:
+ *         description: User account verified and updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: User account verified and updated successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     verificationCode:
+ *                       type: string
+ *                       example: ABC123
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: null
+ *                     details:
+ *                       type: string
+ *                       example: null
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: Verification code is invalid or user information is incomplete
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     verificationCode:
+ *                       type: string
+ *                       example: null
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: INVALID_CODE_OR_INCOMPLETE_INFO
+ *                     details:
+ *                       type: string
+ *                       example: Verification code is invalid or user information is incomplete
+ *       404:
+ *         description: Email not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: Email is not registered
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     verificationCode:
+ *                       type: string
+ *                       example: null
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: EMAIL_NOT_FOUND
+ *                     details:
+ *                       type: string
+ *                       example: The provided email is not registered
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: Failed to process the request
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     verificationCode:
+ *                       type: string
+ *                       example: null
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: SERVER_ERROR
+ *                     details:
+ *                       type: string
+ *                       example: Internal server error occurred
+ */
 exports.register = async (req, res) => {
-  const { email } = req.body;
-  const code = generateUniqueCode();
+  const { email, code, name, number_phone } = req.body;
 
   try {
-    sendVerificationCode(email, code, "register");
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json(
+        createResponse("error", "Email is not registered", {
+          verificationCode: null,
+        })
+      );
+    }
+    if (!user.name || !user.phone_number) {
+      return res.status(400).json(
+        createResponse("error", "User information is incomplete", {
+          verificationCode: null,
+        })
+      );
+    }
+    if (code !== user.verifyCode) {
+      return res.status(400).json(
+        createResponse("error", "Verification code is invalid", {
+          verificationCode: null,
+        })
+      );
+    }
+    const userAccount = {
+      name: name,
+      phone_number: number_phone,
+      verifyAccount: true,
+      first_login: true,
+      verifyCode: null,
+    };
+    user.save(userAccount);
     res.status(200).json(
       createResponse("success", "Verification code sent to your email", {
         verificationCode: code,
@@ -236,9 +417,7 @@ exports.register = async (req, res) => {
  *                        example: SMTP server is unreachable
  */
 exports.login = async (req, res) => {
-  const { email } = req.body;
-  const code = generateUniqueCode();
-
+  const { email, code } = req.body;
   try {
     const user = await User.findOne({ email });
     if (!user) {
@@ -248,6 +427,7 @@ exports.login = async (req, res) => {
         })
       );
     }
+
     sendVerificationCode(email, code, "login");
     if (user.first_login) {
       user.first_login = false;
@@ -267,169 +447,6 @@ exports.login = async (req, res) => {
           "Failed to send email",
           { verificationCode: null },
           { code: "EMAIL_SEND_ERROR", details: error.message }
-        )
-      );
-  }
-};
-
-/**
- * @swagger
- * tags:
- *    - name: Authentication
- *      description: User authentication and registration
- * /api/v1/verify-account:
- *    post:
- *      summary: Verify user account
- *      description: Verifies the user account using the verification code sent to the user's email
- *      tags:
- *        - Authentication
- *      requestBody:
- *        required: true
- *        content:
- *          application/json:
- *            schema:
- *              type: object
- *              properties:
- *                email:
- *                  type: string
- *                  format: email
- *                  example: abc@example.com
- *                code:
- *                  type: string
- *                  example: ABC123
- *      responses:
- *        200:
- *          description: Login successful
- *          content:
- *            application/json:
- *              schema:
- *                type: object
- *                properties:
- *                  status:
- *                    type: string
- *                    example: success
- *                  message:
- *                    type: string
- *                    example: Login successful
- *                  data:
- *                    type: object
- *                    properties:
- *                      verificationCode:
- *                        type: string
- *                        example: ABC123
- *                      name:
- *                        type: string
- *                        example: John Doe
- *                      phone:
- *                        type: string
- *                        example: 1234567890
- *                  error:
- *                    type: object
- *                    properties:
- *                      code:
- *                        type: string
- *                        example: null
- *                      details:
- *                        type: string
- *                        example: null
- *        400:
- *          description: Email is not registered
- *          content:
- *            application/json:
- *              schema:
- *                type: object
- *                properties:
- *                  status:
- *                    type: string
- *                    example: error
- *                  message:
- *                    type: string
- *                    example: Email is not registered
- *                  data:
- *                    type: object
- *                    properties:
- *                      verificationCode:
- *                        type: string
- *                        example: null
- *                      error:
- *                        type: object
- *                        properties:
- *                          code:
- *                            type: string
- *                            example: null
- *                          details:
- *                            type: string
- *                            example: null
- *        500:
- *          description: Failed to verify code
- *          content:
- *            application/json:
- *              schema:
- *                type: object
- *                properties:
- *                  status:
- *                    type: string
- *                    example: error
- *                  message:
- *                    type: string
- *                    example: Failed to verify code
- *                  data:
- *                    type: object
- *                    properties:
- *                      verificationCode:
- *                        type: string
- *                        example: null
- *                  error:
- *                    type: object
- *                    properties:
- *                      code:
- *                        type: string
- *                        example: VERIFICATION_ERROR
- *                      details:
- *                        type: string
- *                        example: Verification code is invalid
-*/ 
-exports.verifyAccount = async (req, res) => {
-  const { email, code } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json(
-        createResponse("error", "Email is not registered", {
-          verificationCode: null,
-        })
-      );
-    }
-    if (code) {
-      const name = user.name;
-      const phone = user.phone_number;
-      if (!name || !phone) {
-        return res.status(400).json(
-          createResponse("error", "User information is incomplete", {
-            verificationCode: null,
-          })
-        );
-      }
-      user.account_verified = true;
-      await user.save();
-      res.status(200).json(
-        createResponse("success", "Login successful", {
-          verificationCode: code,
-          name: name,
-          phone: phone,
-        })
-      );
-    }
-  } catch (error) {
-    res
-      .status(500)
-      .json(
-        createResponse(
-          "error",
-          "Failed to verify code",
-          { verificationCode: null },
-          { code: "VERIFICATION_ERROR", details: error.message }
         )
       );
   }

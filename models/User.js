@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema({
   phone_number: { type: String, required: true, unique: true },
   account_verified: { type: Boolean, default: false },
   first_login: { type: Boolean, default: true },
+  verifyCode: { type: number, unique: true },
 });
 
 module.exports = mongoose.model("User", UserSchema);
