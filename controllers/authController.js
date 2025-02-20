@@ -2,6 +2,7 @@ const { sendVerificationCode } = require("../utils/emailService");
 const createResponse = require("../utils/responseStructure");
 const generateUniqueCode = require("../utils/generateUniqueCode");
 const User = require("../models/User");
+const generateAccessToken = require("../utils/generateAccessToken");
 /**
  * @swagger
  * tags:
@@ -415,6 +416,14 @@ exports.register = async (req, res) => {
  *                      details:
  *                        type: string
  *                        example: SMTP server is unreachable
+ * components:
+ *    securitySchemes:
+ *      bearerAuth:
+ *        type: http
+ *        scheme: bearer
+ *        bearerFormat: JWT
+ * security:
+ *    - bearerAuth: []
  */
 exports.login = async (req, res) => {
   const { email, code } = req.body;
@@ -432,12 +441,14 @@ exports.login = async (req, res) => {
     if (user.first_login) {
       user.first_login = false;
       await user.save();
-      res.status(200).json(
-        createResponse("success", "Verification code sent to your email", {
-          verificationCode: code,
-        })
-      );
     }
+    const accessToken = generateAccessToken(user);
+    res.status(200).json(
+      createResponse("success", "Verification code sent to your email", {
+        verificationCode: code,
+        accessToken: accessToken,
+      })
+    );
   } catch (error) {
     res
       .status(500)

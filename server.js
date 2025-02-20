@@ -13,7 +13,7 @@ const config = require("./config/config");
 const app = express();
 
 db();
-const port = config.port
+const port = config.port;
 // app.use(corsMiddleware);
 app.use(
   session({ secret: config.secretKey, resave: true, saveUninitialized: true })
@@ -41,6 +41,20 @@ const swaggerOptions = {
     servers: [
       {
         url: `https://api-mbbc.onrender.com`,
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
+    },
+    security: [
+      {
+        bearerAuth: [],
       },
     ],
   },
