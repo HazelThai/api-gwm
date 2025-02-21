@@ -7,7 +7,7 @@ const UnavailableDatesSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  date: [{ type: number, required: true }],
+  date: [{ type: Number, required: true }],
 });
 
 module.exports = mongoose.model("UnavailableDates", UnavailableDatesSchema);

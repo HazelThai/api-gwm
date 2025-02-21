@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-// const routes = require("./routes");
+const routes = require("./routes/routes")
 const cookieParser = require("cookie-parser");
 const path = require("path");
 const cors = require("cors");
@@ -27,7 +27,7 @@ app.use(
 app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-// app.use("/api", routes);
+app.use("/api/v1", routes);
 app.use(express.static(path.join(__dirname, "public")));
 
 const swaggerOptions = {

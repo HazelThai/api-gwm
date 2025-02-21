@@ -1,6 +1,6 @@
 const { sendVerificationCode } = require("../utils/emailService");
 const createResponse = require("../utils/responseStructure");
-const generateUniqueCode = require("../utils/generateUniqueCode");
+const generateCode = require("../utils/generateCode");
 const User = require("../models/User");
 const generateAccessToken = require("../utils/generateAccessToken");
 /**
@@ -90,7 +90,7 @@ const generateAccessToken = require("../utils/generateAccessToken");
  */
 exports.sendMail = async (req, res) => {
   const { email } = req.body;
-  const code = generateUniqueCode();
+  const code = generateCode();
 
   try {
     sendVerificationCode(email, code, "register");
@@ -291,6 +291,17 @@ exports.register = async (req, res) => {
         })
       );
     }
+    if (number_phone === user.phone_number) {
+      return res.status(400).json(
+        createResponse(
+          "error",
+          "Phone number is registered before. Please use another phone number.",
+          {
+            verificationCode: null,
+          }
+        )
+      );
+    }
     if (code !== user.verifyCode) {
       return res.status(400).json(
         createResponse("error", "Verification code is invalid", {
@@ -459,39 +470,39 @@ exports.login = async (req, res) => {
 };
 
 /**
-  * @swagger
-  * tags:
-  *   - name: Authentication
-  *     description: User authentication and registration
-  * /api/v1/logout:
-  *   post:
-  *     summary: Log out the user
-  *     description: Logs out the user by destroying the session and clearing the cookies
-  *     tags:
-  *       - Authentication
-  *     responses:
-  *       200:
-  *         description: User logged out successfully
-  *         schema:
-  *           type: object
-  *           properties:
-  *             status:
-  *               type: string
-  *               example: success
-  *             message:
-  *               type: string
-  *               example: User logged out successfully
-  *             data:
-  *               type: object
-  *               properties:
-  *                 verificationCode:
-  *                   type: string
-  *                   example: null
-  *                 accessToken:
-  *                   type: string
-  *                   example: null
-  *             error:
-*/
+ * @swagger
+ * tags:
+ *   - name: Authentication
+ *     description: User authentication and registration
+ * /api/v1/logout:
+ *   post:
+ *     summary: Log out the user
+ *     description: Logs out the user by destroying the session and clearing the cookies
+ *     tags:
+ *       - Authentication
+ *     responses:
+ *       200:
+ *         description: User logged out successfully
+ *         schema:
+ *           type: object
+ *           properties:
+ *             status:
+ *               type: string
+ *               example: success
+ *             message:
+ *               type: string
+ *               example: User logged out successfully
+ *             data:
+ *               type: object
+ *               properties:
+ *                 verificationCode:
+ *                   type: string
+ *                   example: null
+ *                 accessToken:
+ *                   type: string
+ *                   example: null
+ *             error:
+ */
 exports.logout = async (req, res) => {
   try {
     req.session.destroy();
